@@ -1,0 +1,113 @@
+#### ON local ####
+
+## fyi
+## the average honey bee weighs 1/10 of a gram i.e. ~.00022 lbs.
+
+library(dplyr)
+library(ggplot2)
+library(plyr)
+library(reshape)
+library(wesanderson)
+library(stringdist)
+
+## set working directory
+setwd("~/Documents/ZhangLab/")
+
+## load up d, pur_site, and pur_chem
+load("BeePUR/YA_bee_analysis.rda")
+
+## change codes to characters:
+pur_site$site_code <- as.character(pur_site$site_code)
+pur_chem$chem_code <- as.character(pur_chem$chem_code)
+
+## load up site_chem
+load("BeePUR/YA_site_chem_analysis.rda")
+
+## get some helper functions (env hf) just in case
+source("R/helper_functions.R") ## local machine
+
+## load LD50 for pesticides
+tox <- read.csv("BeePUR/AI-BeeToxicity.csv") ## local machine
+tox$chem_code <- as.character(tox$chem_code)
+
+## load crop attractiveness to bees:
+load("BeePUR/cropBeeAttr.rda")
+
+### visualize time series ###
+
+ggplot(yearly_chem_by_crop,
+       aes(x = year, y = lbs_acre, group = site_code, color = site_code)) +
+    geom_smooth(method = "loess") +
+    facet_wrap(~buff_size)
+
+## lbs per acre for all application types (points)
+ggplot(d, aes(x = year, y = lbs_acre,
+              group = as.factor(buff_size),
+              color = as.factor(buff_size))) +
+    geom_point() +
+    facet_grid(~buff_size, scale = "free") +
+    scale_color_discrete(name = "Buffer Radius (Mi)") +
+    ##geom_smooth() +
+    xlab("Year") +
+    ylab("Lbs per Acre \n (all AI combined)") +
+    ggtitle("Yearly Active Ingredient Presence in Lbs per Acre \n from all Application Types")
+
+ggsave(filename = "yearly_AI_presence_all_application_types.pdf")
+
+## lbs per acre for all application types (gam)
+ggplot(d , aes(x = year, y = lbs_acre, ## %>% sample_n(nrow(d) * .5)
+              group = as.factor(buff_size),
+              color = as.factor(buff_size))) +
+    ## geom_point() +
+    ## facet_grid(~buff_size, scale = "free") +
+    scale_color_discrete(name = "Buffer Radius (Mi)") +
+    geom_smooth(span = .1) +
+    xlab("Year") +
+    ylab("Lbs per Acre \n (all AI combined)") +
+    ggtitle("LOESS Smooth of Yearly Active Ingredient Presence in Lbs per Acre \n from all Application Types")
+
+ggsave(filename = "yearly_trend_all_applications.pdf")
+
+## lbs per acre air applications (gam)
+ggplot(d %>% sample_n(nrow(d) * .5), aes(x = year, y = lbs_acre_air,
+              group = as.factor(buff_size),
+              color = as.factor(buff_size))) +
+    ## geom_point() +
+    ## facet_wrap(~buff_size, scale = "free") +
+    scale_color_discrete(name = "Buffer Radius (Mi)") +
+    geom_smooth(method = "loess", span = .1) +
+    xlab("Year") +
+    ylab("Lbs per Acre \n (all AI combined)") +
+    ggtitle("LOESS Smooth of Yearly Active Ingredient Presence in Lbs per Acre \n from Air Applications")
+
+ggsave(filename = "yearly_trend_air_applications.pdf")
+
+## lbs per acre gnd applications (gam)
+ggplot(d %>% sample_n(nrow(d) * .5), 
+       aes(x = year, y = lbs_acre_gnd, 
+           group = as.factor(buff_size),
+           color = as.factor(buff_size))) +
+    ## geom_point() +
+    ## facet_wrap(~buff_size, scale = "free") +
+    scale_color_discrete(name = "Buffer Radius (Mi)") +
+    geom_smooth(method = "loess", span = 1) +
+    xlab("Year") +
+    ylab("Lbs per Acre \n (all AI combined)") +
+    ggtitle("LOESS Smooth of Yearly Active Ingredient Presence in Lbs per Acre \n from Ground Applications")
+
+ggsave(filename = "yearly_trend_ground_applications.pdf")
+
+### visualize lbs_acre vs buff_size ###
+ggplot(d, aes(x = buff_size,
+              y = lbs_acre,
+              group = as.factor(year),
+              color = as.factor(year))) +
+    stat_smooth(method = "lm")
+## since the slope is decreasing, we can surmise
+## that total lbs of chemical sprayed does not
+## grow propotionally to the acreage of the
+## increasing buffer size. Thinking about this
+## in terms of an individual bee's risk of contact,
+## we can say that, probabilistically, the 1 mile
+## buffer is where they are most likely to come into
+## contact with one of the Active Ingredients.

@@ -1,0 +1,28 @@
+library(dplyr)
+library(ggplot2)
+library(plyr)
+library(reshape)
+library(wesanderson)
+library(stringdist)
+library(gridExtra)
+library(data.table)
+
+
+## set working directory
+setwd("~/Documents/ZhangLab/")
+
+## load up yearlies, pur_site, and pur_chem
+load("BeePUR/YA_bee_analysis.rda")
+
+## get some helper functions (env hf) just in case
+source("R/helper_functions.R") ## local machine
+
+## load LD50 for pesticides
+tox <- read.csv("BeePUR/AI-BeeToxicity.csv") ## local machine
+tox$chem_code <- as.character(tox$chem_code)
+
+## load crop attractiveness to bees:
+load("BeePUR/cropBeeAttr.rda")
+
+## read in halflife data:
+halfLives <- read.csv("~/Documents/ZhangLab/BeePUR/pesticide_half_life.csv")

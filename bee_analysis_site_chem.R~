@@ -1,0 +1,29 @@
+library(dplyr)
+library(ggplot2)
+library(plyr)
+library(reshape)
+library(wesanderson)
+library(stringdist)
+
+## set working directory
+setwd("~/Documents/ZhangLab/")
+
+## load up d, pur_site, and pur_chem
+load("BeePUR/YA_bee_analysis.rda")
+
+## change codes to characters:
+pur_site$site_code <- as.character(pur_site$site_code)
+pur_chem$chem_code <- as.character(pur_chem$chem_code)
+
+## load up site_chem
+load("BeePUR/YA_site_chem_analysis.rda")
+
+## get some helper functions (env hf) just in case
+source("R/helper_functions.R") ## local machine
+
+## load LD50 for pesticides
+tox <- read.csv("BeePUR/AI-BeeToxicity.csv") ## local machine
+tox$chem_code <- as.character(tox$chem_code)
+
+## load crop attractiveness to bees:
+load("BeePUR/cropBeeAttr.rda")

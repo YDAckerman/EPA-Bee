@@ -1,0 +1,176 @@
+#### ON local ####
+
+## fyi
+## the average honey bee weighs 1/10 of a gram i.e. ~.00022 lbs.
+
+library(dplyr)
+library(ggplot2)
+library(plyr)
+library(reshape)
+library(wesanderson)
+
+## load up d, pur_site, and pur_chem
+load("BeePUR/YA_bee_analysis.rda")
+
+## change codes to characters:
+pur_site$site_code <- as.character(pur_site$site_code)
+pur_chem$chem_code <- as.character(pur_chem$chem_code)
+
+## load up site_chem
+load("BeePUR/YA_site_chem_analysis.rda")
+
+## get some helper functions (env hf) just in case
+source("R/helper_functions.R") ## local machine
+
+## load LD50 for pesticides
+tox <- read.csv("BeePUR/AI-BeeToxicity.csv") ## local machine
+tox$chem_code <- as.character(tox$chem_code)
+
+### visualize time series ###
+
+## lbs per acre for all application types (points)
+ggplot(d, aes(x = year, y = lbs_acre,
+              group = as.factor(buff_size),
+              color = as.factor(buff_size))) +
+    geom_point() +
+    facet_grid(~buff_size, scale = "free") +
+    scale_color_discrete(name = "Buffer Radius (Mi)") +
+    ##geom_smooth() +
+    xlab("Year") +
+    ylab("Lbs per Acre \n (all AI combined)") +
+    ggtitle("Yearly Active Ingredient Presence in Lbs per Acre \n from all Application Types")
+
+ggsave(filename = "yearly_AI_presence_all_application_types.pdf")
+
+## lbs per acre for all application types (gam)
+ggplot(d , aes(x = year, y = lbs_acre, ## %>% sample_n(nrow(d) * .5)
+              group = as.factor(buff_size),
+              color = as.factor(buff_size))) +
+    ## geom_point() +
+    ## facet_grid(~buff_size, scale = "free") +
+    scale_color_discrete(name = "Buffer Radius (Mi)") +
+    geom_smooth(span = .1) +
+    xlab("Year") +
+    ylab("Lbs per Acre \n (all AI combined)") +
+    ggtitle("LOESS Smooth of Yearly Active Ingredient Presence in Lbs per Acre \n from all Application Types")
+
+ggsave(filename = "yearly_trend_all_applications.pdf")
+
+## lbs per acre air applications (gam)
+ggplot(d %>% sample_n(nrow(d) * .5), aes(x = year, y = lbs_acre_air,
+              group = as.factor(buff_size),
+              color = as.factor(buff_size))) +
+    ## geom_point() +
+    ## facet_wrap(~buff_size, scale = "free") +
+    scale_color_discrete(name = "Buffer Radius (Mi)") +
+    geom_smooth(method = "loess", span = .1) +
+    xlab("Year") +
+    ylab("Lbs per Acre \n (all AI combined)") +
+    ggtitle("LOESS Smooth of Yearly Active Ingredient Presence in Lbs per Acre \n from Air Applications")
+
+ggsave(filename = "yearly_trend_air_applications.pdf")
+
+## lbs per acre gnd applications (gam)
+ggplot(d %>% sample_n(nrow(d) * .5), 
+       aes(x = year, y = lbs_acre_gnd, 
+           group = as.factor(buff_size),
+           color = as.factor(buff_size))) +
+    ## geom_point() +
+    ## facet_wrap(~buff_size, scale = "free") +
+    scale_color_discrete(name = "Buffer Radius (Mi)") +
+    geom_smooth(method = "loess", span = 1) +
+    xlab("Year") +
+    ylab("Lbs per Acre \n (all AI combined)") +
+    ggtitle("LOESS Smooth of Yearly Active Ingredient Presence in Lbs per Acre \n from Ground Applications")
+
+ggsave(filename = "yearly_trend_ground_applications.pdf")
+
+### visualize lbs_acre vs buff_size ###
+ggplot(d, aes(x = buff_size,
+              y = lbs_acre,
+              group = as.factor(year),
+              color = as.factor(year))) +
+    stat_smooth(method = "lm")
+## since the slope is decreasing, we can surmise
+## that total lbs of chemical sprayed does not
+## grow propotionally to the acreage of the
+## increasing buffer size. Thinking about this
+## in terms of an individual bee's risk of contact,
+## we can say that, probabilistically, the 1 mile
+## buffer is where they are most likely to come into
+## contact with one of the Active Ingredients.
+
+
+### visualize site - chemical relationship ###
+
+## add product and crop names and LD50 to site_chem
+site_chem <- left_join(site_chem, pur_site, by = "site_code")
+site_chem <- left_join(site_chem, pur_chem, by = "chem_code")
+site_chem <- left_join(site_chem, tox, by = "chem_code")
+
+### for 2013
+## site_chem really needs to be looked at one year
+## and one buffer at a time, that way we can get some
+## orders on site_code and chem_code:
+site_chem_2013 <- site_chem %>%
+    filter(year == 2013) %>%
+    mutate(
+        chemname_w_LD50 = paste(chemname, LD50..ug.bee.1., sep = " - "),
+        site_name = hf$removeParens(site_name)
+        )
+
+## order site_name  by frequency of the site (see site_chem contruction above,
+## in particular the construction for r [rank])
+order1 <- site_chem_2013 %>%
+    arrange(desc(r)) %>%
+    distinct(site_name)
+site_chem_2013$site_name <- factor(site_chem_2013$site_name,
+                                      levels = order1$site_name)
+
+## ordered chemname by LD50
+order2 <- site_chem_2013 %>%
+    arrange(LD50..ug.bee.1.) %>%
+    distinct(chemname, chemname_w_LD50) 
+site_chem_2013$chemname_w_LD50 <- factor(site_chem_2013$chemname_w_LD50,
+                                         levels = order2$chemname_w_LD50)
+site_chem_2013$chemname <- factor(site_chem_2013$chemname,
+                                  levels = order2$chemname)
+
+## this can either be visualized in num
+## bin the results:
+bins <- c(list(c(0.0004, 120)),list(121:200), list(201:2000), list(2001:20000), list(20001:80000), list(80001:200000), list(200001:600000), list(600001:3000000))
+
+site_chem_2013$binned_applications <- unlist(llply(site_chem_2013$total_lbs,
+                                                   function(x){
+##    x <- as.integer(x)
+    i <- unlist(llply(bins, function(bin){
+        x <= max(bin) & x >= min(bin)
+    }))
+    if(length(which(i)) == 0){print(x)}
+    which(i)
+}))
+
+labels <- unlist(llply(bins, function(bin){
+    paste0(min(bin), " - ",max(bin))
+}))
+pal <- wes_palette("Zissou", length(labels), type = "continuous")
+
+### visualize the relationship between site and crop
+### by number of applications (air, ground, all)
+ggplot(site_chem_2013, aes(x = site_name,
+                           y = chemname_w_LD50,
+                           fill = as.factor(binned_applications))) +
+    geom_tile() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 0, size = 5)) +
+    theme(axis.text.y = element_text(angle = 0, hjust = 0, size = 4)) +
+    scale_fill_manual(name = "Total Lbs Applied",
+                      values = pal,
+                      breaks = seq_along(labels),
+                      labels = labels) +
+    xlab(label = "Crop \n (ordered by decresing frequency of co-occurence with almonds)") +
+    ylab(label = "Active Ingredient & LD50 \n (ordered by increasing LD50)") +
+    ggtitle("Total Lbs Active Ingredient Use in Crops in 2013")
+
+ggsave(filename = "crop_ai_total_lbs_2013.pdf")
+
+
