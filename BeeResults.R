@@ -1,10 +1,8 @@
-
-setwd("~/Documents/ZhangLab/")
+setwd("~/Dropbox/ZhangLabData")
 load("BeePUR/YA_bee_analysis.rda")
 load("BeePUR/yearly_sums.rda")
 load("BeePUR/site_frequencies.rda")
 load("BeePUR/ais_info.rda")
-load("~/Documents/ZhangLab/BeePUR/crop_counts.rda")
 library(dplyr)
 library(ggplot2)
 library(plyr)
@@ -22,7 +20,7 @@ pur_chem$chem_code <- as.character(pur_chem$chem_code)
 yearly_chem_by_crop$site_code <- as.character(yearly_chem_by_crop$site_code)
 
 ## get some helper functions (env hf) just in case
-source("R/helper_functions.R") ## local machine
+source("~/Documents/Coding/R/R_convenience/helper_functions.R") ## local machine
 
 ## load LD50 for pesticides
 tox <- read.csv("BeePUR/AI-BeeToxicity.csv") ## local machine
@@ -402,6 +400,8 @@ g <- llply(1:5, function(buff){
 grid.arrange(arrangeGrob(g[[2]], g[[3]], g[[4]], ncol = 3), arrangeGrob(g[[1]], g[[5]], ncol = 2))
 g <- arrangeGrob(arrangeGrob(g[[2]], g[[3]], g[[4]], ncol = 3), arrangeGrob(g[[1]], g[[5]], ncol = 2))
 
+## histogram of distribution of number of bee-attractive crops within 1-5 mile buffer
+## of bearing almond sections
 count_proximity_bee_crops$buff_size <- as.factor(count_proximity_bee_crops$buff_size)
 levels(count_proximity_bee_crops$buff_size) <- paste0(1:5, " Mi")
 ggplot(count_proximity_bee_crops %>% filter(year == 2013), aes(x = num_bee_crops)) +
@@ -410,6 +410,48 @@ ggplot(count_proximity_bee_crops %>% filter(year == 2013), aes(x = num_bee_crops
     ylab("Proportion of all Almond Sections") +
     xlab("Number of unique Bee-Attractive Crops Present in Buffer") +
     ggtitle("Distributions of Number of Unique, Non-Almond, Bee-Attractive Crops \n by Buffer size in 2013")
+
+## histogram of distribution of number of chemicals used (on bee crop) within 1-5 mile buffer
+## of bearing almond sections
+dd <- count_proximity_bee_crops %>%
+    filter(year == 2013) %>%
+    group_by(buff_size, num_chems_used) %>%
+    dplyr::summarise(proportion = n() / 4427) %>%
+    ungroup()
+
+ggplot(dd, aes(x = num_chems_used, y = proportion)) +
+    geom_bar(stat = "identity") +
+    facet_grid(~buff_size) +
+    ylab("Proportion of all Almond Sections") +
+    xlab("Number of unique Chemicals Used in Buffer") +
+    ggtitle("Distributions of Number of Unique Chemicals Used \n by Buffer size in 2013")
+
+## histogram of distribution of number of (all) crops within 1-5 mile buffer
+## of bearing almond sections
+count_proximity_all_crops$buff_size <- as.factor(count_proximity_all_crops$buff_size)
+levels(count_proximity_all_crops$buff_size) <- paste0(1:5, " Mi")
+ggplot(count_proximity_all_crops %>% filter(year == 2013), aes(x = num_bee_crops)) +
+    geom_bar(aes(y = (..count..)/4427)) +
+    facet_grid(~buff_size) +
+    ylab("Proportion of all Almond Sections") +
+    xlab("Number of unique Crops Present in Buffer") +
+    ggtitle("Distributions of Number of Unique, Non-Almond, All-Attractive Crops \n by Buffer size in 2013")
+
+
+## histogram of distribution of number of chemicals used (on all crop) within 1-5 mile buffer
+## of bearing almond sections
+dd <- count_proximity_all_crops %>%
+    filter(year == 2013) %>%
+    group_by(buff_size, num_chems_used) %>%
+    dplyr::summarise(proportion = n() / 4427) %>%
+    ungroup()
+
+ggplot(dd, aes(x = num_chems_used, y = proportion)) +
+    geom_bar(stat = "identity") +
+    facet_grid(~buff_size) +
+    ylab("Proportion of all Almond Sections") +
+    xlab("Number of unique Chemicals Used in Buffer") +
+    ggtitle("Distributions of Number of Unique Chemicals Used \n by Buffer size in 2013")
 
 yearly_sums$buff_size <- as.factor(yearly_sums$buff_size)
 levels(yearly_sums$buff_size) <- paste0(1:5, " Mi")

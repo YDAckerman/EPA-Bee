@@ -382,19 +382,34 @@ yearly_chem_by_crop <- ldply(c(1991:2013), function(Y){
 count_proximity_bee_crops <- ldply(1991:2013, function(Y){
 
     comtrs <- bee_buf_bearing %>% filter(year == Y) %>% select(comtrs)
-    bee_tox <- bee_buf %>%
-        filter(year == Y)
-    bee_tox <- collect(bee_tox)
 
     d <- bee_buf %>%
         filter(year == Y)
     d <- collect(d)
     d %>%
+        ## filter out almonds because we know almonds are present at every almond section
         filter(site_code %in% setdiff(as.numeric(crop_lib_attr$site_code), 3001) &
                comtrs %in% comtrs$comtrs) %>%
             group_by(year, comtrs, buff_size) %>%
-                dplyr::select(site_code) %>%
-                    dplyr::summarise(num_bee_crops = n_distinct(site_code))
+                dplyr::select(site_code, chem_code) %>%
+                    dplyr::summarise(num_bee_crops = n_distinct(site_code),
+                                     num_chems_used = n_distinct(chem_code))
+}, .progress = "text")
+
+count_proximity_all_crops <- ldply(1991:2013, function(Y){
+
+    comtrs <- bee_buf_bearing %>% filter(year == Y) %>% select(comtrs)
+
+    d <- bee_buf %>%
+        filter(year == Y)
+    d <- collect(d)
+    d %>%
+        ## filter out almonds because we know almonds are present at every almond section
+        filter(site_code != 3001 & comtrs %in% comtrs$comtrs) %>%
+            group_by(year, comtrs, buff_size) %>%
+                dplyr::select(site_code, chem_code) %>%
+                    dplyr::summarise(num_bee_crops = n_distinct(site_code),
+                                     num_chems_used = n_distinct(chem_code))
 }, .progress = "text")
 
 ### rankings:
@@ -518,6 +533,6 @@ save(AI_ranks_all_chem, AI_ranks_bee_chem,
      count_proximity_bee_crops, perc_chem_use_by_site,
      pur_chem, pur_site, site_chem, site_freq,
      yearly_chem_all_crops, yearly_chem_by_crop,
-     site_prod, comtrs_summs,
+     site_prod, comtrs_summs, count_proximity_all_crops,
      file = "Bee_Data/YA_bee_analysis.rda")
 
