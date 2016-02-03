@@ -7,3 +7,9 @@ CPYR EPA_bee -*- mode: org -*-
       look at how many different chemicals were used within 1-5
       buffers of almond sections.
   * see notes
+  * TODO collect in-section, non-almond applications and analyze
+  * TODO collect post 55degF applications within section & 1,3mi buff of
+    bearing sections. Do this only for Central Valley Counties for
+    temp reasons? This is going to entail using the boundaries
+    schema... This might also be a good opportunity to explore the ddR
+    package? Parallelizing will definitely help.
