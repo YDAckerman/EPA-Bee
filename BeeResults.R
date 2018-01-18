@@ -26,6 +26,8 @@ source("~/Documents/Coding/R/R_convenience/helper_functions.R") ## local machine
 tox <- read.csv("BeePUR/AI-BeeToxicity.csv") ## local machine
 tox$chem_code <- as.character(tox$chem_code)
 
+lb_to_kg <- 0.453592
+
 ## load crop attractiveness to bees:
 load("BeePUR/cropBeeAttr.rda")
 
@@ -144,14 +146,14 @@ tmp <- ais_info %>%
 
 site_chem_2013 <- left_join(site_chem_2013, tmp, by = c("chem_code"))
 
-bins <- c(list(c(0.0001, 100)),
-          list(c(101,200)),
-	  list(c(201,2000)),
-	  list(c(2001,20000)),
-          list(c(20001,60500)))
+bins <- c(list(lb_to_kg * c(0.0001, 100)),
+          list(lb_to_kg * c(101,200)),
+	  list(lb_to_kg * c(201,2000)),
+	  list(lb_to_kg * c(2001,20000)),
+          list(lb_to_kg * c(20001,60500)))
 
 site_chem_2013$binned_applications <-
-    unlist(llply(site_chem_2013$total_lbs,
+    unlist(llply(lb_to_kg * site_chem_2013$total_lbs,
                  function(x){
                      if(x > 1){ x <- floor(x) }
                      i <- unlist(llply(bins, function(bin){
@@ -173,12 +175,12 @@ ggplot(site_chem_2013, aes(x = site_name,
                            y = chemname_w_LD50,
                            fill = binned_applications)) +
     geom_tile() +
-    scale_fill_manual(name = "Total Lbs \n Applied",
+    scale_fill_manual(name = "Total Kgs \n Applied",
                       values = pal,
                       breaks = seq_along(labels),
                       labels = labels,
                       drop = FALSE) +
-    labs(title = "Total Lbs Active Ingredient Presence by Crop and AI \n for 5 mi buffered, Bee-Attractive Crops in 2013",
+    labs(title = "Total Kgs Active Ingredient Presence by Crop and AI \n for 5 mi buffered, Bee-Attractive Crops in 2013",
            x = "Crop \n (ordered by decreasing rank of LD contribution)",
 	   y = "Active Ingredient & LD50 \n (ordered by increasing LD50)") +
     theme(plot.title = element_text(size = 16),
@@ -195,12 +197,12 @@ ggplot(site_chem_2013 %>% filter(ai_class == "NEONICOTINOID"), aes(x = site_name
                            y = chemname_w_LD50,
                            fill = binned_applications)) +
     geom_tile() +
-    scale_fill_manual(name = "Total Lbs \n Applied",
+    scale_fill_manual(name = "Total Kgs \n Applied",
                       values = pal,
                       breaks = seq_along(labels),
                       labels = labels,
                       drop = FALSE) +
-    labs(title = "Total Lbs Active Ingredient Presence by Crop and AI \n for 5 mi buffered, Bee-Attractive Crops in 2013",
+    labs(title = "Total Kgs Active Ingredient Presence by Crop and AI \n for 5 mi buffered, Bee-Attractive Crops in 2013",
            x = "Crop \n (ordered by decreasing rank of LD contribution)",
 	   y = "Active Ingredient & LD50 \n (ordered by increasing LD50)") +
     theme(plot.title = element_text(size = 16),
@@ -217,12 +219,12 @@ ggplot(site_chem_2013 %>% filter(ai_class == "ORGANOPHOSPHATE"), aes(x = site_na
                            y = chemname_w_LD50,
                            fill = binned_applications)) +
     geom_tile() +
-    scale_fill_manual(name = "Total Lbs \n Applied",
+    scale_fill_manual(name = "Total Kgs \n Applied",
                       values = pal,
                       breaks = seq_along(labels),
                       labels = labels,
                       drop = FALSE) +
-    labs(title = "Total Lbs Active Ingredient Presence by Crop and AI \n for 5 mi buffered, Bee-Attractive Crops in 2013",
+    labs(title = "Total Kgs Active Ingredient Presence by Crop and AI \n for 5 mi buffered, Bee-Attractive Crops in 2013",
            x = "Crop \n (ordered by decreasing rank of LD contribution)",
 	   y = "Active Ingredient & LD50 \n (ordered by increasing LD50)") +
     theme(plot.title = element_text(size = 16),
@@ -239,12 +241,12 @@ ggplot(site_chem_2013 %>% filter(ai_class == "PYRETHROID"), aes(x = site_name,
                            y = chemname_w_LD50,
                            fill = binned_applications)) +
     geom_tile() +
-    scale_fill_manual(name = "Total Lbs \n Applied",
+    scale_fill_manual(name = "Total Kgs \n Applied",
                       values = pal,
                       breaks = seq_along(labels),
                       labels = labels,
                       drop = FALSE) +
-    labs(title = "Total Lbs Active Ingredient Presence by Crop and AI \n for 5 mi buffered, Bee-Attractive Crops in 2013",
+    labs(title = "Total Kgs Active Ingredient Presence by Crop and AI \n for 5 mi buffered, Bee-Attractive Crops in 2013",
            x = "Crop \n (ordered by decreasing rank of LD contribution)",
 	   y = "Active Ingredient & LD50 \n (ordered by increasing LD50)") +
     theme(plot.title = element_text(size = 16),
@@ -455,17 +457,22 @@ ggplot(dd, aes(x = num_chems_used, y = proportion)) +
 
 yearly_sums$buff_size <- as.factor(yearly_sums$buff_size)
 levels(yearly_sums$buff_size) <- paste0(1:5, " Mi")
+yearly_sums$variable <- gsub("lbs", "kgs", yearly_sums$variable)
 yearly_sums$variable <- as.factor(yearly_sums$variable)
-levels(yearly_sums$variable) <- c("Total lbs AI", "Total Lethal Doses", "Median lbs", "Median lds", "Mean lbs", "Mean lds")
-ggplot(yearly_sums %>% filter(variable %in% c("Total lbs AI", "Total Lethal Doses")),
+yearly_sums <- yearly_sums %>%
+    dplyr::mutate(value = ifelse(grepl("kgs", variable),
+                                 lb_to_kg * value, value))
+levels(yearly_sums$variable) <- c("Total kgs AI", "Total Lethal Doses", "Median kgs", "Median lds", "Mean kgs", "Mean lds")
+
+ggplot(yearly_sums %>% filter(variable %in% c("Total kgs AI", "Total Lethal Doses")),
        aes(x = year, y = value,
            group = variable, color = variable)) +
     scale_color_manual(values = wes_palette("Cavalcanti")) +
     geom_line() +
-    ylab(label = "Lethal Doses (from LD50)                              Lbs Active Ingredient") +
+    ylab(label = "Lethal Doses (from LD50)                              Kgs Active Ingredient") +
     facet_grid(variable ~ buff_size, scale = "free") +
     xlab(label = "Year") +
-    ggtitle("Yearly Trends in Total Lbs AI & Total Lethal Doses (from LD50)")
+    ggtitle("Yearly Trends in Total Kgs AI & Total Lethal Doses (from LD50)")
 
 ## by ai_class
 
@@ -555,16 +562,21 @@ top_ten <- order1 %>% head(10)
 
 yearly_sums_by_site$buff_size <- as.factor(yearly_sums_by_site$buff_size)
 levels(yearly_sums_by_site$buff_size) <- paste0(1:5, " Mi")
+yearly_sums_by_site$variable <- gsub("lbs", "kgs",
+                                     yearly_sums_by_site$variable)
+yearly_sums_by_site <- yearly_sums_by_site %>%
+    dplyr::mutate(value = ifelse(grepl("kgs", variable),
+                                 lb_to_kg * value, value))
 yearly_sums_by_site$variable <- as.factor(yearly_sums_by_site$variable)
-levels(yearly_sums_by_site$variable) <- c("Total lbs AI", "Total Lethal Doses", "Median lbs", "Median lds", "Mean lbs", "Mean lds")
+levels(yearly_sums_by_site$variable) <- c("Total kgs AI", "Total Lethal Doses", "Median kgs", "Median lds", "Mean kgs", "Mean lds")
 
 ggplot(yearly_sums_by_site %>%
        filter(site_code %in% as.numeric(top_ten$site_code) &
-       variable %in% c("Total lbs AI", "Total Lethal Doses")),
+       variable %in% c("Total kgs AI", "Total Lethal Doses")),
        aes(x = year, y = value, group = site_name, color = hf$removeParens(site_name))) +
     geom_line() +
     scale_color_discrete(name="Crop") +
     facet_grid(variable ~ buff_size, scales = "free") +
-    ylab(label = "Lethal Doses (from LD50)                         Lbs Active Ingredient") +
+    ylab(label = "Lethal Doses (from LD50)                         Kgs Active Ingredient") +
     xlab(label = "Year") +
-    ggtitle("Yearly Trends in Total Lbs AI & Total Lethal Doses (from LD50) \n by crops with greatest contribution")
+    ggtitle("Yearly Trends in Total Kgs AI & Total Lethal Doses (from LD50) \n by crops with greatest contribution")
