@@ -70,6 +70,8 @@ cropAttr$Crop <- hf$trim(cropAttr$Crop)
 
 ## filter out the 0 acre planted rows (these aren't crops?)
 
+lb_to_kg <- 0.453592
+
 ## air, ground, and other:
 site_chem_AGO <- bee_buf2 %>%
     ## remove non-crops
@@ -81,7 +83,8 @@ site_chem_AGO <- bee_buf2 %>%
     ## summarize into total lbs, av lbs per acre, and variance of
     ## lbs per acre
     dplyr::summarise(num_applications = n(),
-                     total_lbs = sum(lbs_chem) ##,
+                     total_lbs = sum(lbs_chem),
+		     total_kg = lb_to_kg * sum(lbs_chem) ##,
                      ##av_lbs_acre_planted = mean(lbs_acre_planted),
                      ##var_lbs_acre_planted  = var(lbs_acre_planted)
                      ) %>% ungroup()
@@ -89,10 +92,13 @@ site_chem_AGO <- bee_buf2 %>%
 ## is a summary for all usage types)
 site_chem_tot <- bee_buf2 %>%
     ##dplyr::filter(acre_planted != 0) %>%
-    ##dplyr::mutate(lbs_acre_planted = lbs_chem / acre_planted) %>%
+    ##dplyr::mutate(lbs_acre_planted = lbs_chem / acre_planted,
+        kgs_acre_planted = lb_to_kg * lbs_chem / acre_planted
+    ) %>%
     group_by(year, buff_size, site_code, chem_code) %>%
     dplyr::summarise(num_applications = n(),
-                     total_lbs = sum(lbs_chem)##,
+                     total_lbs = sum(lbs_chem),
+		     total_kg = lb_to_kg * sum(lbs_chem)##,
                      ##av_lbs_acre_planted = mean(lbs_acre_planted),
                      ##var_lbs_acre_planted  = var(lbs_acre_planted)
                      ) %>% ungroup()
@@ -227,10 +233,12 @@ site_prod_AGO <- prod_section %>%
 ## is a summary for all usage types)
 site_prod_tot <- prod_section %>%
     ##dplyr::filter(acre_planted != 0) %>%
-    ##dplyr::mutate(lbs_acre_planted = lbs_prd_used / acre_planted
+    ##dplyr::mutate(lbs_acre_planted = lbs_prd_used / acre_planted,
+    kgs_acre_planted = lb_to_kgs * lbs_prd_used / acre_planted
           ##        ) %>%
     group_by(year, buff_size, site_code, prodno) %>%
-    dplyr::summarise(total_lbs = sum(lbs_prod)##,
+    dplyr::summarise(total_lbs = sum(lbs_prod),
+                     total_kgs = lb_to_kg ##,
                      ##av_lbs_acre_planted = mean(lbs_acre_planted),
                      ##var_lbs_acre_planted  = var(lbs_acre_planted)
                      ) %>% ungroup()
@@ -285,29 +293,38 @@ site_prod <- left_join(site_prod, pur_prod, by = "prodno")
 ## todo: incorporate ai categories:
 tox$chem_code <- as.numeric(tox$chem_code)
 yearly_chem_all_crops <- ldply(c(1991:2013), function(Y){
-    comtrs <- bee_buf_bearing %>% filter(year == Y) %>% select(comtrs) %>% distinct(comtrs)
+    comtrs <- bee_buf_bearing %>%
+                 filter(year == Y) %>%
+		 select(comtrs) %>%
+		 distinct(comtrs)
     bee_tox <- bee_buf %>% filter(year == Y)
     bee_tox <- collect(bee_tox)
     bee_tox <- bee_tox %>% filter(acre_planted != 0  & comtrs %in% comtrs$comtrs)
     bee_tox <- left_join(bee_tox, tox, by = "chem_code")
     yearly_chem_all_crops_AOG <- bee_tox %>%
         dplyr::mutate(lbs_acre_planted = lbs_chem / acre_planted,
+	              kgs_acre_planted = lb_to_kg * lbs_chem / acre_planted,
                       LD_acre_planted = 453.592 * lbs_chem /
                       (acre_planted * (LD50..ug.bee.1. / (10^6))),
                       LD_pres = 453.592 * lbs_chem / (LD50..ug.bee.1. / (10^6))) %>%
                           group_by(year, comtrs, buff_size, aer_gnd_ind) %>%
                               dplyr::summarise(
                                   total_lbs = sum(lbs_chem),
+				  total_kgs = lb_to_kg * sum(lbs_chem),
                                   total_LDs = sum(LD_pres),
                                   av_lbs_acre_planted = mean(lbs_acre_planted),
+				  av_kgs_acre_planted = lb_to_kg * mean(lbs_acre_planted),
                                   med_lbs_acre_planted = median(lbs_acre_planted),
+				  med_kgs_acre_planted = lb_to_kg * median(lbs_acre_planted),
                                   av_LD_acre_planted = mean(LD_acre_planted),
                                   med_LD_acre_planted = median(LD_acre_planted),
                                   var_lbs_acre_planted = var(lbs_acre_planted),
+				  var_kgs_acre_planted = (lb_to_kg)^2 * var(lbs_acre_planted),
                                   var_LD_acre_planted = var(LD_acre_planted)
                                   )
     yearly_chem_all_crops_tot <- bee_tox %>%
         dplyr::mutate(lbs_acre_planted = lbs_chem / acre_planted,
+	              kgs_acre_planted = lb_to_kg * lbs_chem / acre_planted,
                       LD_acre_planted = 453.592 * lbs_chem /
                       (acre_planted * (LD50..ug.bee.1. / (10^6))),
                       aer_gnd_ind = "tot",
@@ -315,12 +332,16 @@ yearly_chem_all_crops <- ldply(c(1991:2013), function(Y){
                           group_by(year, comtrs, buff_size, aer_gnd_ind) %>%
                               dplyr::summarise(
                                   total_lbs = sum(lbs_chem),
+				  total_kgs = lb_to_kg * sum(lbs_chem),
                                   total_LDs = sum(LD_pres),
                                   av_lbs_acre_planted = mean(lbs_acre_planted),
+				  av_kgs_acre_planted = lb_to_kg * mean(lbs_acre_planted),
                                   med_lbs_acre_planted = median(lbs_acre_planted),
+				  med_kgs_acre_planted = lb_to_kg * median(lbs_acre_planted),
                                   av_LD_acre_planted = mean(LD_acre_planted),
                                   med_LD_acre_planted = median(LD_acre_planted),
                                   var_lbs_acre_planted = var(lbs_acre_planted),
+				  var_kgs_acre_planted = (lb_to_kg)^2 * var(lbs_acre_planted),
                                   var_LD_acre_planted = var(LD_acre_planted)
                                   )
     tmp <- rbind(yearly_chem_all_crops_AOG,
@@ -342,20 +363,28 @@ yearly_chem_by_crop <- ldply(c(1991:2013), function(Y){
     bee_tox <- left_join(bee_tox, tox, by = "chem_code")
     yearly_chem_by_crop_AOG <- bee_tox %>%
         dplyr::mutate(lbs_acre_planted = lbs_chem / acre_planted,
+	              kgs_acre_planted = lb_to_kg * lbs_chem / acre_planted,
                       LD_acre_planted = 453.592 * lbs_chem /
                       (acre_planted * (LD50..ug.bee.1. / (10^6))),
                       LD_pres = 453.592 * lbs_chem / (LD50..ug.bee.1. / (10^6))) %>%
                           group_by(year, comtrs, site_code, buff_size, aer_gnd_ind) %>%
                               dplyr::summarise(
                                   total_lbs = sum(lbs_chem),
+				  total_kgs = lb_to_kg * sum(lbs_chem),
                                   total_LDs = sum(LD_pres),
                                   av_lbs_acre_planted = mean(lbs_acre_planted),
+				  av_kgs_acre_planted = lb_to_kg * mean(lbs_acre_planted),
                                   med_lbs_acre_planted = median(lbs_acre_planted),
+				  med_kgs_acre_planted = lb_to_kg * median(lbs_acre_planted),
                                   av_LD_acre_planted = mean(LD_acre_planted),
-                                  med_LD_acre_planted = median(LD_acre_planted)
+                                  med_LD_acre_planted = median(LD_acre_planted),
+                                  var_lbs_acre_planted = var(lbs_acre_planted),
+				  var_kgs_acre_planted = (lb_to_kg)^2 * var(lbs_acre_planted),
+                                  var_LD_acre_planted = var(LD_acre_planted)
                                   )
     yearly_chem_by_crop_tot <- bee_tox %>%
         dplyr::mutate(lbs_acre_planted = lbs_chem / acre_planted,
+	              kgs_acre_planted = lb_to_kg * lbs_chem / acre_planted,
                       LD_acre_planted = 453.592 * lbs_chem /
                       (acre_planted * (LD50..ug.bee.1. / (10^6))),
                       aer_gnd_ind = "tot",
@@ -363,11 +392,17 @@ yearly_chem_by_crop <- ldply(c(1991:2013), function(Y){
                           group_by(year, comtrs, site_code, buff_size, aer_gnd_ind) %>%
                               dplyr::summarise(
                                   total_lbs = sum(lbs_chem),
+				  total_kgs = lb_to_kg * sum(lbs_chem),
                                   total_LDs = sum(LD_pres),
                                   av_lbs_acre_planted = mean(lbs_acre_planted),
+				  av_kgs_acre_planted = lb_to_kg * mean(lbs_acre_planted),
                                   med_lbs_acre_planted = median(lbs_acre_planted),
+				  med_kgs_acre_planted = lb_to_kg * median(lbs_acre_planted),
                                   av_LD_acre_planted = mean(LD_acre_planted),
-                                  med_LD_acre_planted = median(LD_acre_planted)
+                                  med_LD_acre_planted = median(LD_acre_planted),
+                                  var_lbs_acre_planted = var(lbs_acre_planted),
+				  var_kgs_acre_planted = (lb_to_kg)^2 * var(lbs_acre_planted),
+                                  var_LD_acre_planted = var(LD_acre_planted)
                                   )
      rbind(yearly_chem_by_crop_AOG,
            yearly_chem_by_crop_tot)
@@ -416,7 +451,8 @@ count_proximity_all_crops <- ldply(1991:2013, function(Y){
 
 AI_ranks_all_chem <- bee_buf2 %>%
     group_by(year, buff_size, chem_code) %>%
-    dplyr::summarise(total_lbs = sum(lbs_chem))
+    dplyr::summarise(total_lbs = sum(lbs_chem),
+    total_kgs = lb_to_kg * sum(lbs_chem))
 AI_ranks_all_chem <- collect(AI_ranks_all_chem)
 AI_ranks_all_chem <- AI_ranks_all_chem %>%
     group_by(year, buff_size, chem_code) %>%
@@ -426,21 +462,22 @@ AI_ranks_all_chem <- left_join(AI_ranks_all_chem, pur_chem,
                                by = "chem_code")
 total_lbs <- AI_ranks_all_chem %>%
     group_by(year, buff_size) %>%
-    dplyr::summarise(total_lbs_all_chem = sum(total_lbs))
+    dplyr::summarise(total_lbs_all_chem = sum(total_lbs),
+                     total_kgs_all_chem = lb_to_kg * sum(total_lbs))
 AI_ranks_all_chem <- left_join(AI_ranks_all_chem, total_lbs,
                                by = c("year", "buff_size"))
 AI_ranks_all_chem <- AI_ranks_all_chem %>%
     mutate(perc_total = total_lbs / total_lbs_all_chem)
 
-
 AI_ranks_bee_chem <- bee_buf2 %>%
     group_by(year, buff_size, site_code, chem_code) %>%
-    dplyr::summarise(total_lbs = sum(lbs_chem))
+    dplyr::summarise(total_lbs = sum(lbs_chem), total_kgs = lb_to_kg * sum(lbs_chem))
 AI_ranks_bee_chem <- collect(AI_ranks_bee_chem)
 AI_ranks_bee_chem <- AI_ranks_bee_chem %>%
     filter(site_code %in% as.numeric(crop_lib_attr$site_code)) %>%
     group_by(year, buff_size, chem_code) %>%
-    dplyr::summarise(total_lbs = sum(total_lbs))
+    dplyr::summarise(total_lbs = sum(total_lbs),
+        total_kgs = lb_to_kg * sum(lbs_chem))
 AI_ranks_bee_chem <- AI_ranks_bee_chem %>%
     group_by(year, buff_size, chem_code) %>%
     arrange(desc(total_lbs))
@@ -449,7 +486,8 @@ AI_ranks_bee_chem <- left_join(AI_ranks_bee_chem, pur_chem,
                                by = "chem_code")
 total_lbs <- AI_ranks_bee_chem %>%
     group_by(year, buff_size) %>%
-    dplyr::summarise(total_lbs_bee_chem = sum(total_lbs))
+    dplyr::summarise(total_lbs_bee_chem = sum(total_lbs),
+    total_kgs_bee_chem = lb_to_kg * sum(total_lbs))
 AI_ranks_bee_chem <- left_join(AI_ranks_bee_chem, total_lbs,
                                by = c("year", "buff_size"))
 AI_ranks_bee_chem <- AI_ranks_bee_chem %>%
@@ -459,10 +497,11 @@ AI_ranks_bee_chem <- AI_ranks_bee_chem %>%
 ### in each buffer size in each year.
 perc_chem_use_by_site_site <- bee_buf2 %>%
     group_by(year, buff_size, site_code) %>%
-    dplyr::summarise(total_lbs_site = sum(lbs_chem))
+    dplyr::summarise(total_lbs_site = sum(lbs_chem),
+    total_kgs_site = lb_to_kg * sum(lbs_chem))
 perc_chem_use_by_site_tot <- bee_buf2 %>%
     group_by(year, buff_size) %>%
-    dplyr::summarise(total_lbs = sum(lbs_chem))
+    dplyr::summarise(total_lbs = sum(lbs_chem), total_kgs = lb_to_kg * sum(lbs_chem))
 perc_chem_use_by_site <- left_join(perc_chem_use_by_site_site,
                                    perc_chem_use_by_site_tot, by = c("year", "buff_size"), copy = TRUE)
 perc_chem_use_by_site <- collect(perc_chem_use_by_site)
@@ -523,6 +562,7 @@ comtrs_summs <- ldply(1991:2013, function(Y){
                     group_by(year, comtrs, buff_size) %>%
                     dplyr::summarise(
                         total_lbs = sum(lbs_chem),
+			total_kgs = lb_to_kg * sum(lbs_chem),
                         total_LDs = sum(LD_pres)
                         ) %>%
                     ungroup()
