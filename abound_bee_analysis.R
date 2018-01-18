@@ -71,6 +71,7 @@ cropAttr$Crop <- hf$trim(cropAttr$Crop)
 ## filter out the 0 acre planted rows (these aren't crops?)
 
 lb_to_kg <- 0.453592
+ac_to_hc <- 0.404686
 
 ## air, ground, and other:
 site_chem_AGO <- bee_buf2 %>%
