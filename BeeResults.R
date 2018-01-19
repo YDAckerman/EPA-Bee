@@ -153,10 +153,11 @@ bins <- c(list(lb_to_kg * c(0.0001, 100)),
           list(lb_to_kg * c(20001,60500)))
 
 site_chem_2013$binned_applications <-
-    unlist(llply(lb_to_kg * site_chem_2013$total_lbs,
+    unlist(llply(site_chem_2013$total_lbs,
                  function(x){
+			 x <- x * lb_to_kg
                      if(x > 1){ x <- floor(x) }
-                     i <- unlist(llply(bins, function(bin){
+                     i <- unlist(llply(bins, function(bin){	     
                          x <= max(bin) & x >= min(bin)
                      }))
                      if(length(which(i)) == 0){print(x)}
